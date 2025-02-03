@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-commerce Events</title>
+    <style>
+        button {
+            margin: 5px;
+            padding: 10px 20px;
+        }
+        #products {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>E-commerce Event Simulator</h1>
+    <button onclick="fireEvent('view_item')">View Item</button>
+    <button onclick="fireEvent('add_to_cart')">Add to Cart</button>
+    <button onclick="fireEvent('remove_from_cart')">Remove from Cart</button>
+    <button onclick="fireEvent('begin_checkout')">Begin Checkout</button>
+    <button onclick="fireEvent('purchase')">Purchase</button>
+    <div id="products"></div>
+
+    <script>
+        const productsContainer = document.getElementById('products');
+        window.dataLayer = window.dataLayer || [];
+
+        async function fetchProductPrices() {
+            try {
+                const response = await fetch('https://dummyjson.com/products');
+                const data = await response.json();
+                const products = data.products.map(product => ({
+                    item_id: product.id.toString(),
+                    item_name: product.title,
+                    item_brand: product.brand || 'Unknown Brand',
+                    item_category: product.category || 'General',
+                    item_list_id: "related_products",
+                    price: product.price.toFixed(2),
+                    quantity: 1 + Math.floor(Math.random() * 5)
+                }));
+                
+                return selectRandomProducts(products);
+            } catch (error) {
+                console.error('Error fetching product data:', error);
+                return [];
+            }
+        }
+
+        function selectRandomProducts(products) {
+            const productCount = Math.floor(Math.random() * 2) + 1; // Select 1 or 2 products
+            const shuffled = products.sort(() => 0.5 - Math.random());
+            return shuffled.slice(0, productCount);
+        }
+
+        function calculateTotalValue(products) {
+            return products.reduce((total, product) => total + (parseFloat(product.price) * product.quantity), 0).toFixed(2);
+        }
+
+        function displayProducts(products) {
+            productsContainer.innerHTML = '';
+            products.forEach(product => {
+                const productDiv = document.createElement('div');
+                productDiv.textContent = `${product.item_name} by ${product.item_brand}, Cat: ${product.item_category} - $${product.price} x ${product.quantity}`;
+                productsContainer.appendChild(productDiv);
+            });
+        }
+
+        function fireEvent(eventType) {
+            const eventValue = calculateTotalValue(window.currentProducts);
+
+            const dataLayerEvent = {
+                event: eventType,
+                ecommerce: {
+                    currency: "USD",
+                    value: eventValue,
+                    items: window.currentProducts
+                }
+            }
+
+            window.dataLayer.push(dataLayerEvent);
+
+            console.log('Data Layer Event:', JSON.stringify(dataLayerEvent, null, 2)); // Pretty-print the object
+
+            displayProducts(window.currentProducts);
+        }
+
+        function generateAndAppendUTMParams() {
+            const utmSource = 'source' + Math.floor(Math.random() * 1000);
+            const utmMedium = 'medium' + Math.floor(Math.random() * 1000);
+            const utmCampaign = 'campaign' + Math.floor(Math.random() * 1000);
+
+            const currentUrl = window.location.href;
+            const separator = currentUrl.includes('?') ? '&' : '?';
+            const newUrl = `${currentUrl}${separator}utm_source=${utmSource}&utm_medium=${utmMedium}&utm_campaign=${utmCampaign}`;
+
+            if (!currentUrl.includes('utm_source')) {
+                window.history.replaceState({}, '', newUrl);
+            }
+
+            console.log('Generated UTM Parameters:', {
+                utm_source: utmSource,
+                utm_medium: utmMedium,
+                utm_campaign: utmCampaign
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            window.currentProducts = await fetchProductPrices();
+            displayProducts(window.currentProducts);
+            generateAndAppendUTMParams();
+        });
+    </script>
+</body>
+</html>
